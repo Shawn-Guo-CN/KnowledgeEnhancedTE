@@ -3,7 +3,7 @@
     Loads SNLI entailment dataset.
 
 """
-
+import torch
 from tree import Tree
 from utils import *
 
@@ -65,20 +65,20 @@ class SNLI(object):
                 for h in hypothese:
                     self.inc_word_counts(h, word_counter)
 
-                ptree_str = ' '.join(premise)
-                htree_str = ' '.join(hypothese)
+                p_tree_str = ' '.join(premise)
+                h_tree_str = ' '.join(hypothese)
 
-                ptree = Tree()
-                htree = Tree()
-                ptree.parse(ptree_str)
-                htree.parse(htree_str)
+                p_tree = Tree()
+                h_tree = Tree()
+                p_tree.parse(p_tree_str)
+                h_tree.parse(h_tree_str)
 
                 data.append({'label': self.relations[gold_label],
                              'id': len(data),
-                             'premise': ptree_str,
-                             'ptree': ptree,
-                             'hypothese': htree_str,
-                             'htree': htree})
+                             # 'premise': ptree_str,
+                             'p_tree': p_tree,
+                             # 'hypothese': htree_str,
+                             'h_tree': h_tree})
             else:
                 printerr('Error loading' + line)
 
