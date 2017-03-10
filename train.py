@@ -36,18 +36,6 @@ def train():
     root_align = RootAlign(word_embedding, config)
 
     optimizer = optim.Adadelta(root_align.parameters())
-    exit()
-    idx = 0
-    for _data in snli.train:
-        p_tree = _data['p_tree']
-        h_tree = _data['h_tree']
-        target = Variable(torch.LongTensor([_data['label']]))
-        output = root_align(p_tree, h_tree)
-        loss = F.nll_loss(output, target)
-        idx += 1
-        print 'sample ', idx, "\t:", target, output
-        print loss
-
 
     for i in xrange(10):
         train_loss = 0
@@ -60,19 +48,8 @@ def train():
             loss = F.nll_loss(output, target)
             loss.backward()
             optimizer.step()
-            train_loss += loss
+            train_loss += loss[0]
         print 'epoch ', i, ' loss:', train_loss
 
-
-    idx = 0
-    for _data in snli.train:
-        p_tree = _data['p_tree']
-        h_tree = _data['h_tree']
-        target = Variable(torch.LongTensor([_data['label']]))
-        output = root_align(p_tree, h_tree)
-        loss = F.nll_loss(output, target)
-        idx += 1
-        print 'sample ', idx, "\t:", target, output
-        print loss
 
 train()

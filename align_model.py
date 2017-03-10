@@ -14,5 +14,5 @@ class RootAlign(nn.Module):
         p_tree.postorder_traverse(self.rnn)
         h_tree.postorder_traverse(self.rnn)
 
-        out = F.softmax(self.linear(F.sigmoid(torch.cat((p_tree.calculate_result, h_tree.calculate_result), 1))))
+        out = F.log_softmax(self.linear(F.sigmoid(torch.cat((p_tree.calculate_result, h_tree.calculate_result), 1))))
         return out
