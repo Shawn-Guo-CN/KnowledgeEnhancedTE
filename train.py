@@ -13,6 +13,7 @@ from snli import SNLI
 from simpleprofiler import SimpleProfiler
 from align_model import RootAlign
 
+
 def train():
     word_embedding = WordEmbedding('./sampledata/wordembedding')
     snli = SNLI('./sampledata/')
@@ -27,15 +28,21 @@ def train():
     for _data in snli.train:
         _data['p_tree'].mark_word_id(word_embedding)
         _data['h_tree'].mark_word_id(word_embedding)
-
     for _data in snli.dev:
         _data['p_tree'].mark_word_id(word_embedding)
         _data['h_tree'].mark_word_id(word_embedding)
 
     config = {'hidden_dim': 400, 'relation_num': 3}
     root_align = RootAlign(word_embedding, config)
-
     optimizer = optim.Adadelta(root_align.parameters())
+
+    for _data in snli.dev:
+        p_tree = _data['p_tree']
+        h_tree = _data['h_tree']
+        output = root_align(p_tree, h_tree)
+        max_v = output.data.max(1)[1][0][0]
+        right = True if max_v == _data['label'] else False
+        print 'label: ', _data['label'], '\tpred: ', max_v, '\tright: ', right
 
     for i in xrange(10):
         train_loss = 0
@@ -48,8 +55,15 @@ def train():
             loss = F.nll_loss(output, target)
             loss.backward()
             optimizer.step()
-            train_loss += loss[0]
-        print 'epoch ', i, ' loss:', train_loss
+            train_loss += loss.data[0]
+        print 'loss:', train_loss
 
+    for _data in snli.dev:
+        p_tree = _data['p_tree']
+        h_tree = _data['h_tree']
+        output = root_align(p_tree, h_tree)
+        max_v = output.data.max(1)[1][0][0]
+        right = True if max_v == _data['label'] else False
+        print 'label: ', _data['label'], '\tpred: ', max_v, '\tright: ', right
 
 train()

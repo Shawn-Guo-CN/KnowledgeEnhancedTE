@@ -17,7 +17,7 @@ from utils import *
 from wordembedding import WordEmbedding
 from snli import SNLI
 from simpleprofiler import SimpleProfiler
-from model_entailment import StructuredEntailmentModel
+from align_model import RootAlign
 
 torch.manual_seed(123)
 
@@ -26,21 +26,21 @@ parser.add_argument('-t', '--train-size', type=int, default=0,
                     help='Number of samples used in training (default: 0)')
 parser.add_argument('--dim', type=int, default=150,
                     help='LSTM memory dimension')
-parser.add_argument('-e', '--epoches', type=int, default=30,
+parser.add_argument('-e', '--epoches', type=int, default=10,
                     help='Number of training epoches')
-parser.add_argument('-lr', '--learning_rate', type=float, default=0.0001,
+parser.add_argument('-lr', '--learning_rate', type=float, default=1.0,
                     help='Learning rate')
 parser.add_argument('-b', '--batch_size', type=int, default=32,
                     help='Batch size')
-parser.add_argument('--hiddenrel', type=int, default=150,
-                    help='Number of hidden relations')
-parser.add_argument('--dataset_prefix', type=str, default='./sampledata',
+parser.add_argument('--hidden-dim', type=int, default=150,
+                    help='Number of hidden units')
+parser.add_argument('--dataset_prefix', type=str, default='./sampledata/',
                     help='Prefix of path to dataset')
 parser.add_argument('-d', '--drop_out', type=float, default=0.2,
                     help='Dropout rate')
-parser.add_argument('-w', '--word_embedding', type=str, default='./sampledata/wordembedding',
+parser.add_argument('-w', '--word-embedding', type=str, default='./sampledata/wordembedding',
                     help='Path to word embedding')
-parser.add_argument('--gpu_id', type=int, default=None,
+parser.add_argument('--gpu_id', type=int, default=0,
                     help='The gpu device to use. None means use only CPU.')
 parser.add_argument('--interactive', type=bool, default=True,
                     help='Show progress interactively')
@@ -48,93 +48,118 @@ parser.add_argument('--dump', default=None, help='Weights dump')
 parser.add_argument('--eval', default=None, help='Evaluate weights')
 parser.add_argument('--oovonly', type=bool, default=True,
                     help='Update OOV embeddings only')
+parser.add_argument('-vfq', '--valid-freq', type=int, default=5,
+                    help='Frequency of Validating model')
 
 args = parser.parse_args()
-args.cuda = not args.no_cuda and torch.cuda.is_available()
+args.cuda = not args.gpu_id is None and torch.cuda.is_available()
 
 if args.cuda:
-    torch.cuda.manual_seed(args.seed)
-    torch.cuda.set_device(args.cuda_device)
+    torch.cuda.manual_seed(2415)
+    torch.cuda.set_device(args.gpu_id)
 
 
 class Trainer(object):
-    def __init__(self, verbose):
-        self.verbose = verbose or True
+    def __init__(self, verbose=True):
+        self.verbose = verbose
         if self.verbose:
             printerr('Word embedding path: ' + args.word_embedding)
         self.word_embedding = WordEmbedding(args.word_embedding)
-
+        # word_embedding = WordEmbedding('./sampledata/wordembedding')
         if self.verbose:
             printerr('Dataset prefix:' + args.dataset_prefix)
+        self.data = SNLI(args.dataset_prefix, args.train_size, True, True)
 
         self.dump = args.dump
-
-        self.data = SNLI(args.dataset_prefix, args.train_size, True, True)
 
         # trim the word embeddings to contain only words in the dataset
         if self.verbose:
             printerr("Before trim word embedding, " + str(self.word_embedding.embeddings.size(0)) + " words")
-        print self.data.word_counts
         self.word_embedding.trim_by_counts(self.data.word_counts)
-        words_from_embedding = self.word_embedding.embeddings.size(0)
         if self.verbose:
-            printerr("After trim word embedding, " + str(words_from_embedding) + " words")
-
+            printerr("After trim word embedding, " + str(self.word_embedding.embeddings.size(0)) + " words")
         self.word_embedding.extend_by_counts(self.data.train_word_counts)
-
         if self.verbose:
             printerr("After adding training words, " + str(self.word_embedding.embeddings.size(0)) + " words")
 
-        self.model = StructuredEntailmentModel({'word_emb': self.word_embedding,
-                                                'repr_dim': args.dim,
-                                                'num_relations': self.data.num_relations,
-                                                'learning_rate': args.learning_rate,
-                                                'batch_size': args.batch_size,
-                                                'dropout': args.dropout,
-                                                'interactive': True,
-                                                'words_from_embbedding': words_from_embedding,
-                                                'update_oov_only': args.oovonly,
-                                                'hiddenrel ': args.hiddenrel,
-                                                'dataset': self.data,
-                                                'verbose': self.verbose})
+        # mark word ids in snli trees
+        for _data in self.data.train:
+            _data['p_tree'].mark_word_id(self.word_embedding)
+            _data['h_tree'].mark_word_id(self.word_embedding)
+        for _data in self.data.dev:
+            _data['p_tree'].mark_word_id(self.word_embedding)
+            _data['h_tree'].mark_word_id(self.word_embedding)
+
+        config = {'hidden_dim': args.hidden_dim, 'relation_num': 3,
+                  'cuda_flag': args.cuda}
+        self.model = RootAlign(self.word_embedding, config)
+        self.optimizer = optim.Adadelta(self.model.parameters(), lr=args.learning_rate)
+
+        if args.cuda:
+            self.model.cuda()
+
 
     def train(self):
-        best_train_acc, best_dev_acc = 0.0, 0.0
-        train = self.data.train
-
+        best_dev_acc = 0.0
         profiler = SimpleProfiler()
 
-        for i in xrange(1, args.epoches):
+        for i in xrange(0, args.epoches):
             if self.verbose:
                 printerr("Starting epoch%d" % i)
 
-            profiler.reset()
+            profiler.reset('train')
             profiler.start("train")
-            train_info = self.model.train(train)
+            train_loss = self.train_step(self.data.train)
             profiler.pause("train")
 
-            profiler.start("dev")
-            dev_info = self.model.evaluate(self.data.dev)
-            profiler.pause("dev")
+            print 'epoch:', i, 'train loss:', train_loss, 'time:', profiler.get_time('train')
 
-            best_train_suffix, best_dev_suffix = "", ""
-            if best_train_acc < train_info['acc']:
-                best_train_acc = train_info['acc']
-                best_train_suffix = '+'
+            if (i + 1) % args.valid_freq == 0:
+                profiler.reset('dev')
+                profiler.start("dev")
+                dev_acc = self.eval_step(self.data.dev)
+                profiler.pause("dev")
+                best_dev_suffix = ""
+                print '\t evaluating at epoch:', i, 'acc:', dev_acc
 
-            if best_dev_acc < dev_info['acc']:
-                best_dev_acc = dev_info['acc']
-                best_dev_suffix = "+"
+                if best_dev_acc < dev_acc:
+                    best_dev_acc = dev_acc
+                    best_dev_suffix = 'epoch' + str(i)
 
-            printerr("At epoch %d, train %.2fs loss %f acc %f%s dev %.2fs acc %f%s" % (
-                i, profiler.get_time('train'), train_info['loss'], train_info['acc'], best_train_suffix,
-                profiler.get_time('dev'), dev_info['acc'], best_dev_suffix))
 
             if not self.dump is None:
                 file_name = "%s.%d.pickle" % (self.dump, i)
                 printerr("saving weights to " + file_name)
                 torch.save(self.model.params, file_name)
 
+    def train_step(self, data):
+        train_loss = 0
+        for _data in data:
+            p_tree = _data['p_tree']
+            h_tree = _data['h_tree']
+            if args.cuda:
+                target = Variable(torch.LongTensor([_data['label']]).cuda())
+            else:
+                target = Variable(torch.LongTensor([_data['label']]))
+            self.optimizer.zero_grad()
+            output = self.model(p_tree, h_tree)
+            loss = F.nll_loss(output, target)
+            loss.backward()
+            self.optimizer.step()
+            train_loss += loss.data[0]
+        return train_loss
+
+    def eval_step(self, data):
+        right_count = 0
+        for _data in data:
+            p_tree = _data['p_tree']
+            h_tree = _data['h_tree']
+            output = self.model(p_tree, h_tree)
+            max_v = output.data.max(1)[1][0][0]
+            right = True if max_v == _data['label'] else False
+            if right:
+                right_count += 1
+        return float(right_count) / float(len(data))
 
 t = Trainer()
 

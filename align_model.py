@@ -7,7 +7,7 @@ from tree_models import RecursiveNN
 class RootAlign(nn.Module):
     def __init__(self, word_embedding, config):
         super(RootAlign, self).__init__()
-        self.rnn = RecursiveNN(word_embedding, config['hidden_dim'])
+        self.rnn = RecursiveNN(word_embedding, config['hidden_dim'], config['cuda_flag'])
         self.linear = nn.Linear(config['hidden_dim'] * 2, config['relation_num'])
 
     def forward(self, p_tree, h_tree):
