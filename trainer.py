@@ -1,7 +1,5 @@
 """
-
   The trainer.
-
 """
 
 import torch
@@ -116,11 +114,10 @@ class Trainer(object):
 
             if (i + 1) % args.valid_freq == 0:
                 profiler.reset('dev')
-                profiler.start("dev")
+                profiler.start('dev')
                 dev_acc = self.eval_step(self.data.dev)
-                profiler.pause("dev")
-                best_dev_suffix = ""
-                print '\t evaluating at epoch:', i, 'acc:', dev_acc
+                profiler.pause('dev')
+                print '\t evaluating at epoch:', i, 'acc:', dev_acc, 'time:', profiler.get_time('dev')
 
                 if best_dev_acc < dev_acc:
                     best_dev_acc = dev_acc

@@ -1,13 +1,17 @@
+"""
+Contains various alignment model
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from tree_models import RecursiveNN
+from tree_models import *
 
 class RootAlign(nn.Module):
     def __init__(self, word_embedding, config):
         super(RootAlign, self).__init__()
-        self.rnn = RecursiveNN(word_embedding, config['hidden_dim'], config['cuda_flag'])
+        self.rnn = BinaryTreeLSTM(word_embedding, config['hidden_dim'], config['cuda_flag'])
         self.linear = nn.Linear(config['hidden_dim'] * 2, config['relation_num'])
 
     def forward(self, p_tree, h_tree):
