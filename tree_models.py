@@ -46,7 +46,7 @@ class BinaryTreeLSTM(nn.Module):
         self.embedding.weight = nn.Parameter(word_embedding.embeddings)
 
         self.word2hidden = nn.Linear(self.word_dim, self.hidden_dim, False)
-        self.hidden2hidden = nn.Linear(2 * self.hidden_dim, self.hidden_dim)
+        self.hidden2hidden = nn.Linear(self.hidden_dim, 5 * self.hidden_dim)
 
         self.cuda_flag = cuda_flag
 
@@ -61,6 +61,19 @@ class BinaryTreeLSTM(nn.Module):
             return node.calculate_result
         else:
             assert len(node.children) == 2
+            lo2g = self.hidden2hidden(node.children[0].calculate_result)
+            ro2g = self.hidden2hidden(node.children[1].calculate_result)
+            sum = lo2g + ro2g
+            sigmoid_chunk = F.sigmoid(sum[:4 * self.hidden_dim])
+            input_gate = sigmoid_chunk[:self.hidden_dim]
+            lf_gate = sigmoid_chunk[self.hidden_dim: 2 * self.hidden_dim]
+            rf_gate = sigmoid_chunk[2 * self.hidden_dim: 3 * self.hidden_dim]
+            output_gate = sigmoid_chunk[3 * self.hidden_dim: 4 * self.hidden_dim]
+            hidden = F.tanh(sum[4 * self.hidden_dim:])
+
+            c = input_gate * hidden + lf_gate * node.children[0].calculate_result + \
+                rf_gate * node.children[0].calculate_result
+
             node.calculate_result = self.hidden2hidden(torch.cat((node.children[0].calculate_result,
                                                           node.children[1].calculate_result), 1))
             return node.calculate_result

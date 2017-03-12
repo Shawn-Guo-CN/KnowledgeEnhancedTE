@@ -37,14 +37,11 @@ class SNLI(object):
                 printerr('SNLI train: %d pairs' % len(self.train))
                 printerr('SNLI dev: %d pairs' % len(self.dev))
 
-
-
     def inc_word_counts(self, word, counter):
         if counter.has_key(word):
             counter[word] += 1
         else:
             counter[word] = 1
-
 
     def load_data_file(self, file_path, word_counter):
         data = []
@@ -80,6 +77,7 @@ class SNLI(object):
                              # 'hypothese': htree_str,
                              'h_tree': h_tree})
             else:
-                printerr('Error loading' + line)
+                # printerr('Error loading' + line)
+                pass
 
         return data

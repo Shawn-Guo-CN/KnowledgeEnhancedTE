@@ -38,7 +38,7 @@ parser.add_argument('-d', '--drop_out', type=float, default=0.2,
                     help='Dropout rate')
 parser.add_argument('-w', '--word-embedding', type=str, default='./sampledata/wordembedding',
                     help='Path to word embedding')
-parser.add_argument('--gpu_id', type=int, default=0,
+parser.add_argument('--gpu-id', type=int, default=0,
                     help='The gpu device to use. None means use only CPU.')
 parser.add_argument('--interactive', type=bool, default=True,
                     help='Show progress interactively')
@@ -76,7 +76,7 @@ class Trainer(object):
         self.word_embedding.trim_by_counts(self.data.word_counts)
         if self.verbose:
             printerr("After trim word embedding, " + str(self.word_embedding.embeddings.size(0)) + " words")
-        self.word_embedding.extend_by_counts(self.data.train_word_counts)
+        self.word_embedding.extend_by_counts(self.data.word_counts)
         if self.verbose:
             printerr("After adding training words, " + str(self.word_embedding.embeddings.size(0)) + " words")
 
@@ -95,6 +95,7 @@ class Trainer(object):
 
         if args.cuda:
             self.model.cuda()
+            print 'Using GPU', args.gpu_id
 
 
     def train(self):
