@@ -30,7 +30,7 @@ parser.add_argument('-lr', '--learning_rate', type=float, default=1.0,
                     help='Learning rate')
 parser.add_argument('-b', '--batch_size', type=int, default=32,
                     help='Batch size')
-parser.add_argument('--hidden-dim', type=int, default=150,
+parser.add_argument('--hidden-dim', type=int, default=200,
                     help='Number of hidden units')
 parser.add_argument('--dataset_prefix', type=str, default='./sampledata/',
                     help='Prefix of path to dataset')
@@ -38,7 +38,7 @@ parser.add_argument('-d', '--drop_out', type=float, default=0.2,
                     help='Dropout rate')
 parser.add_argument('-w', '--word-embedding', type=str, default='./sampledata/wordembedding',
                     help='Path to word embedding')
-parser.add_argument('--gpu-id', type=int, default=0,
+parser.add_argument('--gpu-id', type=int, default=3,
                     help='The gpu device to use. None means use only CPU.')
 parser.add_argument('--interactive', type=bool, default=True,
                     help='Show progress interactively')
