@@ -139,6 +139,8 @@ class Trainer(object):
                 target = Variable(torch.LongTensor([_data['label']]))
             self.optimizer.zero_grad()
             output = self.model(p_tree, h_tree)
+            p_tree.clear_vars()
+            h_tree.clear_vars()
             loss = F.nll_loss(output, target)
             loss.backward()
             self.optimizer.step()
@@ -151,6 +153,8 @@ class Trainer(object):
             p_tree = _data['p_tree']
             h_tree = _data['h_tree']
             output = self.model(p_tree, h_tree)
+            p_tree.clear_vars()
+            h_tree.clear_vars()
             max_v = output.data.max(1)[1][0][0]
             right = True if max_v == _data['label'] else False
             if right:

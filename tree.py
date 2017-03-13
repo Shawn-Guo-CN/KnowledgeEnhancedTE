@@ -164,6 +164,11 @@ class Tree(object):
         end
         """
 
+    def clear_vars(self):
+        def func(node):
+            del node.calculate_result
+        self.postorder_traverse(func)
+
     def preorder_traverse(self, func):
         func(self)
         # assert len(self.children) == 2

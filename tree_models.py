@@ -22,20 +22,17 @@ class VanillaRecursiveNN(nn.Module):
     def forward(self, node):
         if not node.val is None:
             if self.cuda_flag:
-                _result = self.word2hidden(self.embedding(
+                node.calculate_result = self.word2hidden(self.embedding(
                     Variable(torch.LongTensor([node.word_id]).cuda())))
             else:
-                _result = self.word2hidden(self.embedding(
+                node.calculate_result = self.word2hidden(self.embedding(
                     Variable(torch.LongTensor([node.word_id]))))
-            node.calculate_result = _result.data
-            return Variable(node.calculate_result)
+            return node.calculate_result
         else:
             assert len(node.children) == 2
-            l_result = Variable(node.children[0].calculate_result)
-            r_result = Variable(node.children[1].calculate_result)
-            result = self.hidden2hidden(torch.cat((l_result, r_result), 1))
-            node.calculate_result = result.data
-            return Variable(node.calculate_result)
+            node.calculate_result = self.hidden2hidden(torch.cat((
+                node.children[0].calculate_result, node.children[1].calculate_result), 1))
+            return node.calculate_result
 
 
 class BinaryTreeLSTM(nn.Module):
