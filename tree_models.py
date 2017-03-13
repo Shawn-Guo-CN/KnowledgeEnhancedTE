@@ -22,11 +22,10 @@ class VanillaRecursiveNN(nn.Module):
     def forward(self, node):
         if not node.val is None:
             if self.cuda_flag:
-                node.calculate_result = self.word2hidden(
-                    self.embedding(Variable(torch.LongTensor([node.word_id]).cuda())))
+                variable = Variable(torch.LongTensor([node.word_id]).cuda())
             else:
-                node.calculate_result = self.word2hidden(
-                    self.embedding(Variable(torch.LongTensor([node.word_id]))))
+                variable = Variable(torch.LongTensor([node.word_id]))
+            node.calculate_result = self.word2hidden(self.embedding(variable))
             return node.calculate_result
         else:
             assert len(node.children) == 2
