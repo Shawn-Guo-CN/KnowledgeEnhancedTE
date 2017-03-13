@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from tree_models import *
 
+
 class RootAlign(nn.Module):
     def __init__(self, word_embedding, config):
         super(RootAlign, self).__init__()
@@ -18,5 +19,6 @@ class RootAlign(nn.Module):
         p_tree.postorder_traverse(self.rnn)
         h_tree.postorder_traverse(self.rnn)
 
-        out = F.log_softmax(self.linear(F.sigmoid(torch.cat((p_tree.calculate_result, h_tree.calculate_result), 1))))
+        out = F.log_softmax(self.linear(F.sigmoid(
+            torch.cat((p_tree.calculate_result, h_tree.calculate_result), 1))))
         return out

@@ -97,7 +97,6 @@ class Trainer(object):
             self.model.cuda()
             print 'Using GPU', args.gpu_id
 
-
     def train(self):
         best_dev_acc = 0.0
         profiler = SimpleProfiler()
@@ -123,7 +122,6 @@ class Trainer(object):
                 if best_dev_acc < dev_acc:
                     best_dev_acc = dev_acc
                     best_dev_suffix = 'epoch' + str(i)
-
 
             if not self.dump is None:
                 file_name = "%s.%d.pickle" % (self.dump, i)
