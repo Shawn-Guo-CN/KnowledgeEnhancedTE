@@ -12,6 +12,7 @@ from tree_models import *
 class RootAlign(nn.Module):
     def __init__(self, word_embedding, config):
         super(RootAlign, self).__init__()
+        self.name = 'RootAlign_vRNN'
         self.rnn = VanillaRecursiveNN(word_embedding, config['hidden_dim'], config['cuda_flag'])
         self.linear = nn.Linear(config['hidden_dim'] * 2, config['relation_num'])
 

@@ -38,11 +38,11 @@ parser.add_argument('-d', '--drop_out', type=float, default=0.2,
                     help='Dropout rate')
 parser.add_argument('-w', '--word-embedding', type=str, default='./sampledata/wordembedding',
                     help='Path to word embedding')
-parser.add_argument('--gpu-id', type=int, default=3,
+parser.add_argument('--gpu-id', type=int, default=0,
                     help='The gpu device to use. None means use only CPU.')
 parser.add_argument('--interactive', type=bool, default=True,
                     help='Show progress interactively')
-parser.add_argument('--dump', default=None, help='Weights dump')
+parser.add_argument('--dump', default='./param/', help='Weights dump')
 parser.add_argument('--eval', default=None, help='Evaluate weights')
 parser.add_argument('--oovonly', type=bool, default=True,
                     help='Update OOV embeddings only')
@@ -68,8 +68,6 @@ class Trainer(object):
             printerr('Dataset prefix:' + args.dataset_prefix)
         self.data = SNLI(args.dataset_prefix, args.train_size, True, True)
 
-        self.dump = args.dump
-
         # trim the word embeddings to contain only words in the dataset
         if self.verbose:
             printerr("Before trim word embedding, " + str(self.word_embedding.embeddings.size(0)) + " words")
@@ -92,6 +90,10 @@ class Trainer(object):
                   'cuda_flag': args.cuda}
         self.model = RootAlign(self.word_embedding, config)
         self.optimizer = optim.Adadelta(self.model.parameters(), lr=args.learning_rate)
+        if not args.dump is None:
+            self.dump = args.dump + self.model.name
+        else:
+            self.dump = None
 
         if args.cuda:
             self.model.cuda()
@@ -121,15 +123,17 @@ class Trainer(object):
 
                 if best_dev_acc < dev_acc:
                     best_dev_acc = dev_acc
-                    best_dev_suffix = 'epoch' + str(i)
 
-            if not self.dump is None:
-                file_name = "%s.%d.pickle" % (self.dump, i)
-                printerr("saving weights to " + file_name)
-                torch.save(self.model.params, file_name)
+                    if not self.dump is None:
+                        file_name = "%s.epoch%d.acc%.4f.pickle" % (self.dump, i, dev_acc)
+                        printerr("saving weights to " + file_name)
+                        torch.save(self.model.state_dict(), file_name)
 
     def train_step(self, data):
         train_loss = 0
+        total = str(len(data))
+        index = 0
+        print 'training model'
         for _data in data:
             p_tree = _data['p_tree']
             h_tree = _data['h_tree']
@@ -145,6 +149,8 @@ class Trainer(object):
             loss.backward()
             self.optimizer.step()
             train_loss += loss.data[0]
+            index += 1
+            print '\r', str(index), '/', total, 'loss:', loss.data[0],
         return train_loss
 
     def eval_step(self, data):
@@ -166,9 +172,8 @@ t = Trainer()
 if not args.eval is None:
     printerr("loading weights from " + args.eval)
     loaded = torch.load(args.eval)
-    printerr("loaded params size: " + get_tensor_size(loaded))
-    t.model.params.copy_(loaded)
-    eval_info = t.model.evaluate(t.data.dev)
-    printerr("dev acc %f" % eval_info["acc"])
+    t.model.load_state_dict(loaded)
+    eval_acc = t.eval_step(t.data.dev)
+    printerr("dev acc %f" % eval_acc)
 else:
     t.train()

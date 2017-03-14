@@ -22,11 +22,10 @@ class VanillaRecursiveNN(nn.Module):
     def forward(self, node):
         if not node.val is None:
             if self.cuda_flag:
-                node.calculate_result = self.word2hidden(self.embedding(
-                    Variable(torch.LongTensor([node.word_id]).cuda())))
+                var = Variable(torch.LongTensor([node.word_id]).cuda())
             else:
-                node.calculate_result = self.word2hidden(self.embedding(
-                    Variable(torch.LongTensor([node.word_id]))))
+                var = Variable(torch.LongTensor([node.word_id]))
+            node.calculate_result = self.word2hidden(self.embedding(var))
             return node.calculate_result
         else:
             assert len(node.children) == 2
@@ -53,27 +52,38 @@ class BinaryTreeLSTM(nn.Module):
     def forward(self, node):
         if not node.val is None:
             if self.cuda_flag:
-                node.calculate_result = self.word2hidden(
-                    self.embedding(Variable(torch.LongTensor([node.word_id]).cuda())))
+                var = Variable(torch.LongTensor([node.word_id]).cuda())
             else:
-                node.calculate_result = self.word2hidden(
-                    self.embedding(Variable(torch.LongTensor([node.word_id]))))
+                var = Variable(torch.LongTensor([node.word_id]))
+            h = c = self.word2hidden(self.embedding(var))
+            node.calculate_result = [h, c]
             return node.calculate_result
         else:
             assert len(node.children) == 2
-            lo2g = self.hidden2hidden(node.children[0].calculate_result)
-            ro2g = self.hidden2hidden(node.children[1].calculate_result)
+            lh = node.children[0].calculate_result[0]
+            rh = node.children[1].calculate_result[0]
+            lc = node.children[0].calculate_result[1]
+            rc = node.children[1].calculate_result[1]
+
+            lo2g = self.hidden2hidden(lh)
+            ro2g = self.hidden2hidden(rh)
+
             sum = lo2g + ro2g
-            sigmoid_chunk = F.sigmoid(sum[:4 * self.hidden_dim])
+            sigmoid_chunk = F.sigmoid(sum[0, :4 * self.hidden_dim])
             input_gate = sigmoid_chunk[:self.hidden_dim]
+            input_gate.data.unsqueeze_(0)
             lf_gate = sigmoid_chunk[self.hidden_dim: 2 * self.hidden_dim]
+            lf_gate.data.unsqueeze_(0)
             rf_gate = sigmoid_chunk[2 * self.hidden_dim: 3 * self.hidden_dim]
+            rf_gate.data.unsqueeze(0)
             output_gate = sigmoid_chunk[3 * self.hidden_dim: 4 * self.hidden_dim]
-            hidden = F.tanh(sum[4 * self.hidden_dim:])
+            output_gate.data.unsqueeze_(0)
+            hidden = F.tanh(sum[0, 4 * self.hidden_dim:])
+            hidden.data.unsqueeze_(0)
 
-            c = input_gate * hidden + lf_gate * node.children[0].calculate_result + \
-                rf_gate * node.children[0].calculate_result
+            c = input_gate * hidden + lf_gate * lc + rf_gate * rc
+            h = output_gate * F.tanh(c)
 
-            node.calculate_result = self.hidden2hidden(torch.cat((node.children[0].calculate_result,
-                                                          node.children[1].calculate_result), 1))
+            node.calculate_result = [h, c]
+
             return node.calculate_result
