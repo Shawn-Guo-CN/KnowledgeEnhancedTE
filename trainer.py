@@ -146,7 +146,8 @@ class Trainer(object):
             output = self.model(p_tree, h_tree)
             p_tree.clear_vars()
             h_tree.clear_vars()
-            loss = F.nll_loss(output, target)
+            # loss = F.nll_loss(output, target)
+            loss = F.cross_entropy(output, target)
             loss.backward()
             self.optimizer.step()
             index += 1
