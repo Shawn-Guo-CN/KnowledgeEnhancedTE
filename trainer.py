@@ -15,9 +15,9 @@ from utils import *
 from wordembedding import WordEmbedding
 from snli import SNLI
 from simpleprofiler import SimpleProfiler
-from align_model import RootAlign
+from align_model import *
 
-torch.manual_seed(123)
+torch.manual_seed(1234)
 
 parser = argparse.ArgumentParser(description='Structured Attention PyTorch Version')
 parser.add_argument('-t', '--train-size', type=int, default=0,
@@ -42,7 +42,7 @@ parser.add_argument('--gpu-id', type=int, default=0,
                     help='The gpu device to use. None means use only CPU.')
 parser.add_argument('--interactive', type=bool, default=True,
                     help='Show progress interactively')
-parser.add_argument('--dump', default='./param/', help='Weights dump')
+parser.add_argument('--dump', default=None, help='Weights dump')
 parser.add_argument('--eval', default=None, help='Evaluate weights')
 parser.add_argument('--oovonly', type=bool, default=True,
                     help='Update OOV embeddings only')
@@ -88,7 +88,7 @@ class Trainer(object):
 
         config = {'hidden_dim': args.hidden_dim, 'relation_num': 3,
                   'cuda_flag': args.cuda}
-        self.model = RootAlign(self.word_embedding, config)
+        self.model = RootAlign_BLSTM(self.word_embedding, config)
         self.optimizer = optim.Adadelta(self.model.parameters(), lr=args.learning_rate)
         if not args.dump is None:
             self.dump = args.dump + self.model.name
@@ -97,7 +97,8 @@ class Trainer(object):
 
         if args.cuda:
             self.model.cuda()
-            print 'Using GPU', args.gpu_id
+            printerr('Using GPU %s' % str(args.gpu_id))
+        printerr('Training ' + self.model.name)
 
     def train(self):
         best_dev_acc = 0.0
@@ -112,7 +113,7 @@ class Trainer(object):
             train_loss = self.train_step(self.data.train)
             profiler.pause("train")
 
-            print 'epoch:', i, 'train loss:', train_loss, 'time:', profiler.get_time('train')
+            print 'epoch:', i, 'train_loss:', train_loss, 'time:', profiler.get_time('train')
 
             if (i + 1) % args.valid_freq == 0:
                 profiler.reset('dev')
@@ -130,9 +131,9 @@ class Trainer(object):
                         torch.save(self.model.state_dict(), file_name)
 
     def train_step(self, data):
-        train_loss = 0
         total = str(len(data))
         index = 0
+        train_loss = 0.0
         print 'training model'
         for _data in data:
             p_tree = _data['p_tree']
@@ -148,9 +149,10 @@ class Trainer(object):
             loss = F.nll_loss(output, target)
             loss.backward()
             self.optimizer.step()
-            train_loss += loss.data[0]
             index += 1
+            train_loss += loss.data[0]
             print '\r', str(index), '/', total, 'loss:', loss.data[0],
+        print '\t'
         return train_loss
 
     def eval_step(self, data):
@@ -166,6 +168,7 @@ class Trainer(object):
             if right:
                 right_count += 1
         return float(right_count) / float(len(data))
+
 
 t = Trainer()
 

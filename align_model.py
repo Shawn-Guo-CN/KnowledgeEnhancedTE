@@ -23,3 +23,18 @@ class RootAlign(nn.Module):
         out = F.log_softmax(self.linear(F.sigmoid(torch.cat((
             p_tree.calculate_result, h_tree.calculate_result), 1))))
         return out
+
+class RootAlign_BLSTM(nn.Module):
+    def __init__(self, word_embedding, config):
+        super(RootAlign_BLSTM, self).__init__()
+        self.name = 'RootAlign_LSTM'
+        self.rnn = BinaryTreeLSTM(word_embedding, config['hidden_dim'], config['cuda_flag'])
+        self.linear = nn.Linear(config['hidden_dim'] * 2, config['relation_num'])
+
+    def forward(self, p_tree, h_tree):
+        p_tree.postorder_traverse(self.rnn)
+        h_tree.postorder_traverse(self.rnn)
+
+        out = F.log_softmax(self.linear(F.sigmoid(torch.cat((
+            p_tree.calculate_result[1], h_tree.calculate_result[1]), 1))))
+        return out
