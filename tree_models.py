@@ -1,3 +1,7 @@
+"""
+Tree models means the computation for every node in a tree.
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -22,15 +26,16 @@ class VanillaRecursiveNN(nn.Module):
     def forward(self, node):
         if not node.val is None:
             if self.cuda_flag:
-                var = Variable(torch.LongTensor([node.word_id]).cuda())
+                node.calculate_result = self.word2hidden(self.embedding(
+                    Variable(torch.LongTensor([node.word_id]).cuda())))
             else:
-                var = Variable(torch.LongTensor([node.word_id]))
-            node.calculate_result = self.word2hidden(self.embedding(var))
+                node.calculate_result = self.word2hidden(self.embedding(
+                    Variable(torch.LongTensor([node.word_id]))))
             return node.calculate_result
         else:
             assert len(node.children) == 2
-            node.calculate_result = self.hidden2hidden(torch.cat((
-                node.children[0].calculate_result, node.children[1].calculate_result), 1))
+            node.calculate_result = self.hidden2hidden(F.sigmoid(torch.cat((
+                node.children[0].calculate_result, node.children[1].calculate_result), 1)))
             return node.calculate_result
 
 

@@ -3,9 +3,11 @@
     Loads SNLI entailment dataset.
 
 """
-import torch
+
 from tree import Tree
 from utils import *
+import os
+import cPickle
 
 class SNLI(object):
     def __init__(self, snli_path_prefix=None, train_size=0, lower_case=True, verbose=True):
@@ -22,13 +24,17 @@ class SNLI(object):
         self.word_counts = {}
 
         if not snli_path_prefix is None:
-            self.verbose = False
-            self.train = self.load_data_file(snli_path_prefix + 'train.txt', self.train_word_counts)
-            words = self.train_word_counts.keys()
-            for w in words:
-                self.word_counts[w] = self.train_word_counts[w]
-            self.dev = self.load_data_file(snli_path_prefix + 'dev.txt', self.word_counts)
-            self.verbose = verbose
+            if os.path.isfile(snli_path_prefix + 'snli.pickle'):
+                with open(snli_path_prefix + 'snli.pickle', 'rb') as f:
+                    self.train, self.dev, self.word_counts = cPickle.load(f)
+            else:
+                self.train = self.load_data_file(snli_path_prefix + 'train.txt', self.train_word_counts)
+                words = self.train_word_counts.keys()
+                for w in words:
+                    self.word_counts[w] = self.train_word_counts[w]
+                self.dev = self.load_data_file(snli_path_prefix + 'dev.txt', self.word_counts)
+                with open(snli_path_prefix + 'snli.pickle', 'wb') as f:
+                    cPickle.dump([self.train, self.dev, self.word_counts], f)
 
             if self.train_size > 0:
                 self.train = self.train[:self.train_size]

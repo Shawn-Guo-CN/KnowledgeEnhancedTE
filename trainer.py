@@ -19,38 +19,8 @@ from align_model import *
 
 torch.manual_seed(1234)
 
-parser = argparse.ArgumentParser(description='Structured Attention PyTorch Version')
-parser.add_argument('-t', '--train-size', type=int, default=0,
-                    help='Number of samples used in training (default: 0)')
-parser.add_argument('--dim', type=int, default=150,
-                    help='LSTM memory dimension')
-parser.add_argument('-e', '--epoches', type=int, default=10,
-                    help='Number of training epoches')
-parser.add_argument('-lr', '--learning_rate', type=float, default=1.0,
-                    help='Learning rate')
-parser.add_argument('-b', '--batch_size', type=int, default=32,
-                    help='Batch size')
-parser.add_argument('--hidden-dim', type=int, default=200,
-                    help='Number of hidden units')
-parser.add_argument('--dataset_prefix', type=str, default='./sampledata/',
-                    help='Prefix of path to dataset')
-parser.add_argument('-d', '--drop_out', type=float, default=0.2,
-                    help='Dropout rate')
-parser.add_argument('-w', '--word-embedding', type=str, default='./sampledata/wordembedding',
-                    help='Path to word embedding')
-parser.add_argument('--gpu-id', type=int, default=0,
-                    help='The gpu device to use. None means use only CPU.')
-parser.add_argument('--interactive', type=bool, default=True,
-                    help='Show progress interactively')
-parser.add_argument('--dump', default=None, help='Weights dump')
-parser.add_argument('--eval', default=None, help='Evaluate weights')
-parser.add_argument('--oovonly', type=bool, default=True,
-                    help='Update OOV embeddings only')
-parser.add_argument('-vfq', '--valid-freq', type=int, default=5,
-                    help='Frequency of Validating model')
-
-args = parser.parse_args()
-args.cuda = not args.gpu_id is None and torch.cuda.is_available()
+args = get_args()
+args.cuda = not args.gpu_id == -1 and torch.cuda.is_available()
 
 if args.cuda:
     torch.cuda.manual_seed(2415)
@@ -63,7 +33,7 @@ class Trainer(object):
         if self.verbose:
             printerr('Word embedding path: ' + args.word_embedding)
         self.word_embedding = WordEmbedding(args.word_embedding)
-        # word_embedding = WordEmbedding('./sampledata/wordembedding')
+
         if self.verbose:
             printerr('Dataset prefix:' + args.dataset_prefix)
         self.data = SNLI(args.dataset_prefix, args.train_size, True, True)
