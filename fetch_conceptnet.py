@@ -37,8 +37,8 @@ def tree2set(t):
     t.postorder_traverse(func)
     return _set
 
-word_embedding = WordEmbedding('./sampledata/wordembedding')
-snli = SNLI('./sampledata/')
+word_embedding = WordEmbedding('./data/wordembedding')
+snli = SNLI('./data/')
 
 printerr("Before trim word embedding, " + str(word_embedding.embeddings.size(0)) + " words")
 word_embedding.trim_by_counts(snli.word_counts)
@@ -47,12 +47,21 @@ word_embedding.extend_by_counts(snli.train_word_counts)
 printerr("After adding training words, " + str(word_embedding.embeddings.size(0)) + " words")
 
 phrases = set()
+print 'Gathering phrases in train data...'
 for data in snli.train:
     phrases = phrases | tree2set(data['p_tree'])
     phrases = phrases | tree2set(data['h_tree'])
+print 'done'
+printerr('Gathering phrases in dev data...')
 for data in snli.dev:
     phrases = phrases | tree2set(data['p_tree'])
     phrases = phrases | tree2set(data['h_tree'])
+print 'done'
+print 'Gathering phrases in test data...'
+for data in snli.test:
+    phrases = phrases | tree2set(data['p_tree'])
+    phrases = phrases | tree2set(data['h_tree'])
+print 'done'
 print 'total num of phrases:', len(phrases)
 
 related_terms = {}
@@ -61,7 +70,8 @@ for phrase in phrases:
     related_terms[phrase] = query_related_terms(phrase)
     idx += 1
     print '\rquerying', str(idx)+'/'+str(len(phrases)),
+print ' '
 
-with open('./sampledata/dict_concept_related_terms.pickle', 'wb') as f:
-    print 'saving dict to' + './sampledata/dict_concept_related_terms.pickle'
+with open('./data/dict_concept_related_terms.pickle', 'wb') as f:
+    print 'saving dict to' + './data/dict_concept_related_terms.pickle'
     cPickle.dump(related_terms, f)
