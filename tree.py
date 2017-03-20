@@ -3,6 +3,7 @@
   Tree structure.
 
 """
+from utils import is_stop_word
 
 class Tree(object):
     def __init__(self, val=None, children=None):
@@ -15,6 +16,8 @@ class Tree(object):
 
         self.sent = None
         self.calculate_result = None
+
+        self.related_terms = None
 
     def __str__(self):
         if self.val is None:
@@ -114,6 +117,14 @@ class Tree(object):
             return self.sent
         else:
             return self.sent
+
+    def get_str4conceptnet(self):
+        sent = self.get_sentence()
+        ret = []
+        for w in sent:
+            if not is_stop_word(w):
+                ret.append(w)
+        return '_'.join(ret)
 
     def mark_postorder(self):
         global tree_post_count

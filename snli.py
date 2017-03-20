@@ -25,6 +25,7 @@ class SNLI(object):
 
         if not snli_path_prefix is None:
             if os.path.isfile(snli_path_prefix + 'snli.pickle'):
+                printerr('loading snli dataset from ' + snli_path_prefix + 'snli.pickle')
                 with open(snli_path_prefix + 'snli.pickle', 'rb') as f:
                     self.train, self.dev, self.word_counts = cPickle.load(f)
             else:
