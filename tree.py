@@ -7,15 +7,26 @@ from utils import is_stop_word
 
 class Tree(object):
     def __init__(self, val=None, children=None):
+        # val contains the word characters, if val is not None, it means this node is a leaf node
         self.val = val
         self.children = children
 
         self.leaf_id = None
         self.postorder_id = None
+        # word_id is the idx in embedding matrix
         self.word_id = None
 
+        # sent is a list of the words
         self.sent = None
+
+        # calculate_result contains the calculate result of tree_models, and it can be either a
+        # Variable or a list of Variables(depends on the computation methods, LSTM or Vanilla RNN)
         self.calculate_result = None
+        # this is used for saving attention calculate result temporarily
+        # attn should be a single float number
+        self.attn = None
+        # attn_result is
+        self.attn_result = None
 
         self.related_terms = None
 

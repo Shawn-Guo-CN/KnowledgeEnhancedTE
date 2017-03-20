@@ -61,14 +61,18 @@ class BinaryTreeLSTM(nn.Module):
             else:
                 var = Variable(torch.LongTensor([node.word_id]))
             h = c = self.word2hidden(self.embedding(var))
-            node.calculate_result = [h, c]
+            node.calculate_result = torch.cat((h, c), 1)
             return node.calculate_result
         else:
             assert len(node.children) == 2
-            lh = node.children[0].calculate_result[0]
-            rh = node.children[1].calculate_result[0]
-            lc = node.children[0].calculate_result[1]
-            rc = node.children[1].calculate_result[1]
+            lh = node.children[0].calculate_result[0, :self.hidden_dim]
+            lh.data.unsqueeze_(0)
+            rh = node.children[1].calculate_result[0, :self.hidden_dim]
+            rh.data.unsqueeze_(0)
+            lc = node.children[0].calculate_result[0, self.hidden_dim:]
+            lc.data.unsqueeze_(0)
+            rc = node.children[1].calculate_result[0, self.hidden_dim:]
+            rc.data.unsqueeze_(0)
 
             lo2g = self.hidden2hidden(lh)
             ro2g = self.hidden2hidden(rh)
@@ -89,6 +93,6 @@ class BinaryTreeLSTM(nn.Module):
             c = input_gate * hidden + lf_gate * lc + rf_gate * rc
             h = output_gate * F.tanh(c)
 
-            node.calculate_result = [h, c]
+            node.calculate_result = torch.cat((h, c), 1)
 
             return node.calculate_result
