@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from nltk.corpus import wordnet as wn
 
 
 class NeuralSimilarity(nn.Module):
@@ -48,13 +47,24 @@ class KnowledgeSimilarity(object):
         return result
 
 
-class Node2Tree(nn.Module):
-    def __init__(self):
-        super(Node2Tree, self).__init__()
+class Node2TreeAttention(nn.Module):
+    def __init__(self, node_hidden_size):
+        super(Node2TreeAttention, self).__init__()
+        self.hidden_size = node_hidden_size
+        self.linear = nn.Linear(2 * self.hidden_size, 1, False)
 
     def forward(self, node):
-        assert hasattr(self, 'tree')
-        print node.calculate_result.size()
+        assert hasattr(self, 'tree_result')
+        assert hasattr(self, 'num_nodes')
 
-    def set_tree(self, tree):
-        self.tree = tree
+        v = node.calculate_result.data.expand(self.num_nodes, self.hidden_size)
+        v = Variable(v)
+        input = torch.cat((v, self.tree_result), 1)
+        attn = F.softmax(torch.t(F.sigmoid(self.linear(input))))
+        node.attn = attn.mm(self.tree_result)
+
+        return node.attn
+
+    def set_tree_result(self, tree):
+        self.tree_result = tree.gather_calculate_result()
+        self.num_nodes = tree.postorder_id + 1

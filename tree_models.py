@@ -34,8 +34,8 @@ class VanillaRecursiveNN(nn.Module):
             return node.calculate_result
         else:
             assert len(node.children) == 2
-            node.calculate_result = self.hidden2hidden(F.sigmoid(torch.cat((
-                node.children[0].calculate_result, node.children[1].calculate_result), 1)))
+            node.calculate_result = self.hidden2hidden(torch.cat((
+                node.children[0].calculate_result, node.children[1].calculate_result), 1))
             return node.calculate_result
 
 

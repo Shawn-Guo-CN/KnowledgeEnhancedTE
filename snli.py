@@ -25,26 +25,19 @@ class SNLI(object):
         self.word_counts = {}
 
         if not snli_path_prefix is None:
-            if os.path.isfile(snli_path_prefix + 'snli.pickle'):
-                with open(snli_path_prefix + 'snli.pickle', 'rb') as f:
-                    printerr('loading snli dataset from ' + snli_path_prefix + 'snli.pickle')
-                    self.train, self.dev, self.test, self.word_counts = cPickle.load(f)
-            else:
-                printerr('loading snli dataset from ' + snli_path_prefix + 'train.txt' +
-                         ' and ' + snli_path_prefix + 'dev.txt' +
-                         ' and ' + snli_path_prefix + 'test.txt')
-                self.train = self.load_data_file(snli_path_prefix + 'train.txt', self.train_word_counts)
-                words = self.train_word_counts.keys()
-                for w in words:
-                    self.dev_word_counts[w] = self.train_word_counts[w]
-                self.dev = self.load_data_file(snli_path_prefix + 'dev.txt', self.dev_word_counts)
-                words = self.dev_word_counts.keys()
-                for w in words:
-                    self.word_counts[w] = self.dev_word_counts[w]
-                self.test = self.load_data_file(snli_path_prefix + 'test.txt', self.word_counts)
-                with open(snli_path_prefix + 'snli.pickle', 'wb') as f:
-                    printerr('saving snli to ' + snli_path_prefix + 'snli.pickle')
-                    cPickle.dump([self.train, self.dev, self.test, self.word_counts], f)
+            printerr('loading snli dataset from ' + snli_path_prefix + 'train.txt' +
+                     ' and ' + snli_path_prefix + 'dev.txt' +
+                     ' and ' + snli_path_prefix + 'test.txt')
+            self.train = self.load_data_file(snli_path_prefix + 'train.txt', self.train_word_counts)
+            words = self.train_word_counts.keys()
+            for w in words:
+                self.dev_word_counts[w] = self.train_word_counts[w]
+            self.dev = self.load_data_file(snli_path_prefix + 'dev.txt', self.dev_word_counts)
+            words = self.dev_word_counts.keys()
+            for w in words:
+                self.word_counts[w] = self.dev_word_counts[w]
+            self.test = self.load_data_file(snli_path_prefix + 'test.txt', self.word_counts)
+
 
             if self.train_size > 0:
                 self.train = self.train[:self.train_size]

@@ -16,13 +16,14 @@ class RootAlign(nn.Module):
         self.name = 'RootAlign_vRNN'
         self.rnn = VanillaRecursiveNN(word_embedding, config['hidden_dim'], config['cuda_flag'])
         self.linear = nn.Linear(config['hidden_dim'] * 2, config['relation_num'])
+        self.dropout = nn.Dropout(p=config['drop_p'])
 
     def forward(self, p_tree, h_tree):
         p_tree.postorder_traverse(self.rnn)
         h_tree.postorder_traverse(self.rnn)
 
-        out = F.softmax(self.linear(torch.cat((
-            p_tree.calculate_result, h_tree.calculate_result), 1)))
+        out = F.log_softmax(self.dropout(F.sigmoid(self.linear(torch.cat((
+            p_tree.calculate_result, h_tree.calculate_result), 1)))))
         return out
 
 class RootAlign_BLSTM(nn.Module):
@@ -31,27 +32,36 @@ class RootAlign_BLSTM(nn.Module):
         self.name = 'RootAlign_LSTM'
         self.rnn = BinaryTreeLSTM(word_embedding, config['hidden_dim'], config['cuda_flag'])
         self.linear = nn.Linear(config['hidden_dim'] * 4, config['relation_num'])
+        self.dropout = nn.Dropout(p=config['drop_p'])
 
     def forward(self, p_tree, h_tree):
         p_tree.postorder_traverse(self.rnn)
         h_tree.postorder_traverse(self.rnn)
 
-        out = F.softmax(self.linear(F.sigmoid(torch.cat((
-            p_tree.calculate_result, h_tree.calculate_result), 1))))
+        out = F.log_softmax(self.dropout(F.sigmoid(self.linear(torch.cat((
+            p_tree.calculate_result, h_tree.calculate_result), 1)))))
         return out
 
-class Test(nn.Module):
+class AttentionFromH2P_vRNN(nn.Module):
     def __init__(self, word_embedding, config):
-        super(Test, self).__init__()
-        self.name = 'Test'
+        super(AttentionFromH2P_vRNN, self).__init__()
+        self.name = 'AttentionFromH2P_vRNN'
         self.rnn = VanillaRecursiveNN(word_embedding, config['hidden_dim'], config['cuda_flag'])
         self.linear = nn.Linear(config['hidden_dim'] * 2, config['relation_num'])
-        self.node2tree = Node2Tree(config['hidden_dim'], 1)
+        self.node2tree = Node2TreeAttention(config['hidden_dim'])
+        self.dropout = nn.Dropout(p=config['drop_p'])
 
     def forward(self, p_tree, h_tree):
         p_tree.postorder_traverse(self.rnn)
         h_tree.postorder_traverse(self.rnn)
 
-        self.node2tree.set_tree(p_tree)
+        self.node2tree.set_tree_result(p_tree)
         h_tree.postorder_traverse(self.node2tree)
-        return h_tree.calculate_result
+
+        result = h_tree.get_attention_representation()
+        result = torch.cat((h_tree.calculate_result, result), 1)
+        result = F.sigmoid(self.linear(result))
+
+        out = F.softmax(self.dropout(result))
+
+        return out

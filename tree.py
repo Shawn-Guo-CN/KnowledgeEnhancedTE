@@ -3,7 +3,9 @@
   Tree structure.
 
 """
+import torch
 from utils import is_stop_word
+
 
 class Tree(object):
     def __init__(self, val=None, children=None):
@@ -22,8 +24,10 @@ class Tree(object):
         # calculate_result contains the calculate result of tree_models, and it can be either a
         # Variable or a list of Variables(depends on the computation methods, LSTM or Vanilla RNN)
         self.calculate_result = None
+        # gather result is to concatenate the calculate_result of every node
+        self.gather_result = None
         # this is used for saving attention calculate result temporarily
-        # attn should be a single float number
+        # attn should be matrix of float number, and shape is 1xn
         self.attn = None
         # attn_result is
         self.attn_result = None
@@ -158,6 +162,34 @@ class Tree(object):
             else:
                 self.children[1].prune_last_period()
 
+    # gather calculate_result of all nodes into a matrix
+    def gather_calculate_result(self):
+        if not hasattr(self, 'gather_result') or self.gather_result is None:
+            global result
+            result = None
+            def _func(node):
+                global result
+                if result is None:
+                    result = node.calculate_result
+                else:
+                    result = torch.cat((result, node.calculate_result))
+            self.postorder_traverse(_func)
+            self.gather_result = result
+
+        return self.gather_result
+
+    # calculate the attention representation of every node
+    def get_attention_representation(self):
+        if not hasattr(self, 'attn_result') or self.attn_result is None:
+            def _func(node):
+                if node.val is not None:
+                    node.attn_result = node.attn
+                else:
+                    assert len(node.children) == 2
+                    node.attn_result = node.children[0].attn_result + node.children[1].attn_result
+            self.postorder_traverse(_func)
+        return self.attn_result
+
     def prune(self):
         pass
         """
@@ -188,7 +220,14 @@ class Tree(object):
 
     def clear_vars(self):
         def func(node):
-            del node.calculate_result
+            if hasattr(node, 'calculate_result'):
+                del node.calculate_result
+            if hasattr(node, 'attn'):
+                del node.attn
+            if hasattr(node, 'attn_result'):
+                del node.attn_result
+            if hasattr(node, 'gather_result'):
+                del node.gather_result
         self.postorder_traverse(func)
 
     def preorder_traverse(self, func):

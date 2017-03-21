@@ -57,8 +57,8 @@ class Trainer(object):
             _data['h_tree'].mark_word_id(self.word_embedding)
 
         config = {'hidden_dim': args.hidden_dim, 'relation_num': 3,
-                  'cuda_flag': args.cuda}
-        self.model = RootAlign_BLSTM(self.word_embedding, config)
+                  'cuda_flag': args.cuda, 'drop_p': args.drop_out}
+        self.model = AttentionFromH2P_vRNN(self.word_embedding, config)
         self.optimizer = optim.Adadelta(self.model.parameters(), lr=args.learning_rate)
         if not args.dump is None:
             self.dump = args.dump + self.model.name
