@@ -44,7 +44,7 @@ class AttentionFromH2P_vRNN(nn.Module):
         super(AttentionFromH2P_vRNN, self).__init__()
         self.name = 'AttentionFromH2P_vRNN'
         self.rnn = VanillaRecursiveNN(word_embedding, config['hidden_dim'], config['cuda_flag'])
-        self.linear = nn.Linear(config['hidden_dim'] * 2, config['relation_num'])
+        self.linear = nn.Linear(config['hidden_dim'] * 3, config['relation_num'])
         self.node2tree = Node2TreeAttention(config['hidden_dim'])
         self.dropout = nn.Dropout(p=config['drop_p'])
 
@@ -56,7 +56,7 @@ class AttentionFromH2P_vRNN(nn.Module):
         h_tree.postorder_traverse(self.node2tree)
 
         result = h_tree.get_attention_representation()
-        result = torch.cat((h_tree.calculate_result, result), 1)
+        result = torch.cat((h_tree.calculate_result, p_tree.calculate_result, result), 1)
         result = F.sigmoid(self.linear(result))
 
         out = F.softmax(self.dropout(result))
