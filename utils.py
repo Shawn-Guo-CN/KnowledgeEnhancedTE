@@ -19,25 +19,25 @@ def printerr(msg):
 
 def get_args():
     parser = argparse.ArgumentParser(description='Structured Attention PyTorch Version')
-    parser.add_argument('-t', '--train-size', type=int, default=0,
+    parser.add_argument('-t', '--train_size', type=int, default=0,
                         help='Number of samples used in training (default: 0)')
     parser.add_argument('--dim', type=int, default=150,
                         help='LSTM memory dimension')
-    parser.add_argument('-e', '--epoches', type=int, default=30,
+    parser.add_argument('-e', '--epoches', type=int, default=10,
                         help='Number of training epoches')
     parser.add_argument('-lr', '--learning_rate', type=float, default=1.0,
                         help='Learning rate')
     parser.add_argument('-b', '--batch_size', type=int, default=32,
                         help='Batch size')
-    parser.add_argument('--hidden-dim', type=int, default=200,
+    parser.add_argument('--hidden_dim', type=int, default=200,
                         help='Number of hidden units')
     parser.add_argument('--dataset_prefix', type=str, default='./sampledata/',
                         help='Prefix of path to dataset')
     parser.add_argument('-d', '--drop_out', type=float, default=0.2,
                         help='Dropout rate')
-    parser.add_argument('-w', '--word-embedding', type=str, default='./sampledata/wordembedding',
+    parser.add_argument('-w', '--word_embedding', type=str, default='./sampledata/wordembedding',
                         help='Path to word embedding')
-    parser.add_argument('--gpu-id', type=int, default=-1,
+    parser.add_argument('--gpu_id', type=int, default=-1,
                         help='The gpu device to use. -1 means use only CPU.')
     parser.add_argument('--interactive', type=bool, default=True,
                         help='Show progress interactively')
@@ -45,10 +45,10 @@ def get_args():
     parser.add_argument('--eval', default=None, help='Evaluate weights')
     parser.add_argument('--oovonly', type=bool, default=True,
                         help='Update OOV embeddings only')
-    parser.add_argument('-vfq', '--valid-freq', type=int, default=5,
+    parser.add_argument('-vfq', '--valid_freq', type=int, default=5,
                         help='Frequency of Validating model')
-    parser.add_argument('--snli-file', default=None, type=str,
-                        help='Path and name of dumped SNLI object')
+    parser.add_argument('--load_params', default=None, type=str,
+                        help='Load from previously trained parameters')
 
     args = parser.parse_args()
     return args

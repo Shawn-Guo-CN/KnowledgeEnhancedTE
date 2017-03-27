@@ -60,8 +60,8 @@ class Node2TreeAttention(nn.Module):
         v = node.calculate_result.data.expand(self.num_nodes, self.hidden_size)
         v = Variable(v)
         input = torch.cat((v, self.tree_result), 1)
-        attn = F.softmax(torch.t(F.sigmoid(self.linear(input))))
-        node.attn = attn.mm(self.tree_result)
+        attn = F.softmax(torch.t(F.sigmoid(F.elu(self.linear(input)))))
+        node.attn = attn.mm(self.tree_result) / self.num_nodes
 
         return node.attn
 

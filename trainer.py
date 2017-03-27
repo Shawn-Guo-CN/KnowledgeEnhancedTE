@@ -58,12 +58,17 @@ class Trainer(object):
 
         config = {'hidden_dim': args.hidden_dim, 'relation_num': 3,
                   'cuda_flag': args.cuda, 'drop_p': args.drop_out}
-        self.model = AttentionFromH2P_vRNN(self.word_embedding, config)
+        self.model = AttentionFromH2P_LSTM(self.word_embedding, config)
         self.optimizer = optim.Adadelta(self.model.parameters(), lr=args.learning_rate)
         if not args.dump is None:
             self.dump = args.dump + self.model.name
         else:
             self.dump = None
+
+        if args.load_params is not None:
+            printerr('loading params from' + args.load_params)
+            loaded = torch.load(args.load_params)
+            self.model.load_state_dict(loaded)
 
         if args.cuda:
             self.model.cuda()
@@ -72,6 +77,7 @@ class Trainer(object):
 
     def train(self):
         best_dev_acc = 0.0
+        best_test_acc = 0.0
         profiler = SimpleProfiler()
 
         for i in xrange(0, args.epoches):
@@ -83,7 +89,8 @@ class Trainer(object):
             train_loss = self.train_step(self.data.train)
             profiler.pause("train")
 
-            print 'epoch:', i, 'train_loss:', train_loss, 'time:', profiler.get_time('train')
+            print 'model:', self.model.name, 'epoch:', i, 'train_loss:', train_loss, \
+                'time:', profiler.get_time('train')
 
             if (i + 1) % args.valid_freq == 0:
                 profiler.reset('dev')
@@ -95,8 +102,22 @@ class Trainer(object):
                 if best_dev_acc < dev_acc:
                     best_dev_acc = dev_acc
 
-                    if not self.dump is None:
+                    if self.dump is not None:
                         file_name = "%s.epoch%d.acc%.4f.pickle" % (self.dump, i, dev_acc)
+                        printerr("saving weights to " + file_name)
+                        torch.save(self.model.state_dict(), file_name)
+
+                profiler.reset('test')
+                profiler.start('test')
+                test_acc = self.eval_step(self.data.test)
+                profiler.pause('test')
+                print '\t evaluating at epoch:', i, 'test acc:', test_acc, 'time:', profiler.get_time('dev')
+
+                if best_test_acc < test_acc:
+                    best_test_acc = test_acc
+
+                    if self.dump is not None:
+                        file_name = "%s.epoch%d.testacc%.4f.pickle" % (self.dump, i, test_acc)
                         printerr("saving weights to " + file_name)
                         torch.save(self.model.state_dict(), file_name)
 

@@ -45,6 +45,7 @@ class SNLI(object):
             if self.verbose:
                 printerr('SNLI train: %d pairs' % len(self.train))
                 printerr('SNLI dev: %d pairs' % len(self.dev))
+                printerr('SNLI test: %d pairs' % len(self.test))
 
     def inc_word_counts(self, word, counter):
         if counter.has_key(word):
