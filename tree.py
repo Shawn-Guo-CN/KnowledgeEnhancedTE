@@ -49,7 +49,6 @@ class Tree(object):
         self.build_from_str(tree_str, 0)
         if prune_last_period:
             self.prune_last_period()
-        self.mark_leaf_id()
         self.mark_postorder()
 
     def build_from_str(self, tree_str, index):
@@ -77,19 +76,6 @@ class Tree(object):
 
         self.children = children
         return index + 1, children
-
-    def mark_leaf_id(self):
-        global tree_leaf_count
-        tree_leaf_count = 0
-
-        def func(node):
-            global tree_leaf_count
-            if not node.val is None:
-                node.leaf_id = tree_leaf_count
-                tree_leaf_count += 1
-
-        self.inorder_traverse(func)
-        tree_leaf_count = 0
 
     def mark_word_id(self, word_embedding):
         """
@@ -190,33 +176,22 @@ class Tree(object):
             self.postorder_traverse(_func)
         return self.attn_result
 
-    def prune(self):
-        pass
+    def prune(self, word_embedding):
         """
-        function Tree:prune(test_func)
-            -- return true is this tree node needs to be pruned
-            if self.val == nil then
-                -- internal node
-                local leftprune = self.children[1]:prune(test_func)
-                local rightprune = self.children[2]:prune(test_func)
-                if leftprune == nil and rightprune == nil then
-                  -- both left and right are pruned
-                  return nil
-                elseif leftprune == nil then return rightprune
-                elseif rightprune == nil  then return leftprune
-                else
-                  self.children[1] = leftprune
-                  self.children[2] = rightprune
-                  return self
-                end
-            elseif test_func(self.val) then
-                -- leaf node
-                return nil
-            else
-                return self
-            end
-        end
+        Prune the leaves whose father node exists in vocab
         """
+        global wb
+        wb = word_embedding
+        def _func(node):
+            word = None
+            if len(node.children) > 0 and node.children[0].val is not None\
+                    and node.children[1].val is not None:
+                word = '_'.join([c.val for c in node.children])
+            if word is not None and wb.vocab_has_word(word):
+                node.children = []
+                node.val = word
+        self.postorder_traverse(_func)
+        self.mark_postorder()
 
     def clear_vars(self):
         def func(node):
@@ -229,6 +204,17 @@ class Tree(object):
             if hasattr(node, 'gather_result'):
                 del node.gather_result
         self.postorder_traverse(func)
+
+    def get_phrases(self):
+        global phrases
+        phrases = []
+        def _func(node):
+            global phrases
+            if len(node.children) > 0 and node.children[0].val is not None \
+                    and node.children[1].val is not None:
+                phrases.append('_'.join([c.val for c in node.children]))
+        self.postorder_traverse(_func)
+        return phrases
 
     def preorder_traverse(self, func):
         func(self)

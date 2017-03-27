@@ -41,24 +41,28 @@ class Trainer(object):
         # trim the word embeddings to contain only words in the dataset
         if self.verbose:
             printerr("Before trim word embedding, " + str(self.word_embedding.embeddings.size(0)) + " words")
-        self.word_embedding.trim_by_counts(self.data.word_counts)
+        self.word_embedding.trim_by_counts(self.data.word_counts, self.data.phrase_counts)
         if self.verbose:
             printerr("After trim word embedding, " + str(self.word_embedding.embeddings.size(0)) + " words")
         self.word_embedding.extend_by_counts(self.data.word_counts)
         if self.verbose:
             printerr("After adding training words, " + str(self.word_embedding.embeddings.size(0)) + " words")
 
+        def _prune_and_mark_id(data_set):
+            for data in data_set:
+                data['p_tree'].prune(self.word_embedding)
+                data['p_tree'].mark_word_id(self.word_embedding)
+                data['h_tree'].prune(self.word_embedding)
+                data['h_tree'].mark_word_id(self.word_embedding)
+
         # mark word ids in snli trees
-        for _data in self.data.train:
-            _data['p_tree'].mark_word_id(self.word_embedding)
-            _data['h_tree'].mark_word_id(self.word_embedding)
-        for _data in self.data.dev:
-            _data['p_tree'].mark_word_id(self.word_embedding)
-            _data['h_tree'].mark_word_id(self.word_embedding)
+        _prune_and_mark_id(self.data.train)
+        _prune_and_mark_id(self.data.dev)
+        _prune_and_mark_id(self.data.test)
 
         config = {'hidden_dim': args.hidden_dim, 'relation_num': 3,
                   'cuda_flag': args.cuda, 'drop_p': args.drop_out}
-        self.model = AttentionFromH2P_LSTM(self.word_embedding, config)
+        self.model = AttentionFromH2P_vRNN(self.word_embedding, config)
         self.optimizer = optim.Adadelta(self.model.parameters(), lr=args.learning_rate)
         if not args.dump is None:
             self.dump = args.dump + self.model.name
@@ -137,7 +141,6 @@ class Trainer(object):
             output = self.model(p_tree, h_tree)
             p_tree.clear_vars()
             h_tree.clear_vars()
-            # loss = F.nll_loss(output, target)
             loss = F.cross_entropy(output, target)
             loss.backward()
             self.optimizer.step()
@@ -149,6 +152,7 @@ class Trainer(object):
 
     def eval_step(self, data):
         right_count = 0
+        self.model.set_train_flag(False)
         for _data in data:
             p_tree = _data['p_tree']
             h_tree = _data['h_tree']
@@ -160,6 +164,8 @@ class Trainer(object):
             if right:
                 right_count += 1
         return float(right_count) / float(len(data))
+
+        self.model.set_train_flag(True)
 
 
 t = Trainer()

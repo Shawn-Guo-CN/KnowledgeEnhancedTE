@@ -33,7 +33,7 @@ def get_args():
                         help='Number of hidden units')
     parser.add_argument('--dataset_prefix', type=str, default='./sampledata/',
                         help='Prefix of path to dataset')
-    parser.add_argument('-d', '--drop_out', type=float, default=0.2,
+    parser.add_argument('-d', '--drop_out', type=float, default=0.5,
                         help='Dropout rate')
     parser.add_argument('-w', '--word_embedding', type=str, default='./sampledata/wordembedding',
                         help='Path to word embedding')

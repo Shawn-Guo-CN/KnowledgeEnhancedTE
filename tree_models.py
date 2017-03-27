@@ -24,7 +24,7 @@ class VanillaRecursiveNN(nn.Module):
         self.cuda_flag = cuda_flag
 
     def forward(self, node):
-        if not node.val is None:
+        if node.val is not None:
             if self.cuda_flag:
                 node.calculate_result = self.word2hidden(self.embedding(
                     Variable(torch.LongTensor([node.word_id]).cuda())))

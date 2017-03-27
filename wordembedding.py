@@ -15,13 +15,13 @@ class WordEmbedding(object):
         self.max_word_width = 1024
         self.OOV_SYM = '<OOV>'
 
-        cache_path = path + '.pickle'
-        if not os.path.isfile(cache_path):
+        self.cache_path = path + '.pickle'
+        if not os.path.isfile(self.cache_path):
             printerr('Loading embedding from raw file...')
-            self.vocab, self.embeddings = self.load_from_raw(path, cache_path)
+            self.vocab, self.embeddings = self.load_from_raw(path, self.cache_path)
         else:
             printerr('Loading embedding from cache file...')
-            cache = torch.load(cache_path)
+            cache = torch.load(self.cache_path)
             self.vocab, self.embeddings = cache[0], cache[1]
 
         self.word2idx = None
@@ -35,10 +35,8 @@ class WordEmbedding(object):
     def get_word_idx(self, word):
         if self.word2idx is None:
             self.word2idx = {}
-            index = 0
-            for w in self.vocab:
-                self.word2idx[w] = index
-                index += 1
+            for i, w in enumerate(self.vocab):
+                self.word2idx[w] = i
 
         return self.word2idx[word]
 
@@ -74,26 +72,34 @@ class WordEmbedding(object):
             print>> f, self.vocab[i], ' '.join([str(x) for x in self.embeddings[i]])
         f.close()
 
-    def trim_by_counts(self, word_counts):
+    def trim_by_counts(self, word_counts, phrase_counts):
         # remove words w/o counts
         trimmed_vocab = []
         trimmed_vocab.append(self.OOV_SYM)
 
+        words = word_counts.keys()
         for w in self.vocab:
-            if word_counts.has_key(w):
+            if w in words:
                 trimmed_vocab.append(w)
+        phrases = phrase_counts.keys()
+        for p in self.vocab:
+            if p in phrases:
+                trimmed_vocab.append(p)
 
         trimmed_embeddings = torch.Tensor(len(trimmed_vocab), self.embeddings.size(1))
 
-        for i in xrange(len(trimmed_vocab)):
-            if trimmed_vocab[i] == self.OOV_SYM:
+        for i, word in enumerate(trimmed_vocab):
+            if word == self.OOV_SYM:
                 trimmed_embeddings[i] = (torch.rand(self.embeddings.size(1)) - 0.5) / 10
             else:
-                trimmed_embeddings[i] = self.embeddings[self.get_word_idx(trimmed_vocab[i])]
+                trimmed_embeddings[i] = self.embeddings[self.get_word_idx(word)]
 
         self.vocab = trimmed_vocab
         self.embeddings = trimmed_embeddings
         self.word2idx = None
+
+        printerr('Writing trimmed embeddings to ' + self.cache_path + '...')
+        torch.save([self.vocab, self.embeddings], self.cache_path)
 
     def extend_by_counts(self, word_counts):
         extended_vocab = []
@@ -118,10 +124,13 @@ class WordEmbedding(object):
         self.embeddings = extended_embeddings
         self.word2idx = None
 
+        printerr('Writing extended embeddings to ' + self.cache_path + '...')
+        torch.save([self.vocab, self.embeddings], self.cache_path)
+
     def convert(self, words):
         # converts the words to a vector of indices of word embeddings
-        indices = torch.IntTensor(len(words))
-        for w in words:
+        indices = torch.LongTensor(len(words))
+        for i, w in enumerate(words):
             idx = self.get_word_idx(w)
             if idx is None:
                 idx = self.get_word_idx(self.OOV_SYM)

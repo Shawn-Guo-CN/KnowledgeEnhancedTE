@@ -14,13 +14,19 @@ class RootAlign(nn.Module):
         self.linear = nn.Linear(config['hidden_dim'] * 2, config['relation_num'])
         self.dropout = nn.Dropout(p=config['drop_p'])
 
+        self.train = True
+
     def forward(self, p_tree, h_tree):
         p_tree.postorder_traverse(self.rnn)
         h_tree.postorder_traverse(self.rnn)
 
         out = F.log_softmax(self.dropout(F.sigmoid(self.linear(torch.cat((
             p_tree.calculate_result, h_tree.calculate_result), 1)))))
+
         return out
+
+    def set_train_flag(self, flag):
+        self.train = flag
 
 class RootAlign_BLSTM(nn.Module):
     def __init__(self, word_embedding, config):
@@ -30,13 +36,19 @@ class RootAlign_BLSTM(nn.Module):
         self.linear = nn.Linear(config['hidden_dim'] * 4, config['relation_num'])
         self.dropout = nn.Dropout(p=config['drop_p'])
 
+        self.train = True
+
     def forward(self, p_tree, h_tree):
         p_tree.postorder_traverse(self.rnn)
         h_tree.postorder_traverse(self.rnn)
 
         out = F.log_softmax(self.dropout(F.sigmoid(self.linear(torch.cat((
             p_tree.calculate_result, h_tree.calculate_result), 1)))))
+
         return out
+
+    def set_train_flag(self, flag):
+        self.train = flag
 
 
 class AttentionFromH2P_vRNN(nn.Module):
@@ -48,6 +60,8 @@ class AttentionFromH2P_vRNN(nn.Module):
         self.node2tree = Node2TreeAttention(config['hidden_dim'])
         self.dropout = nn.Dropout(p=config['drop_p'])
 
+        self.train = True
+
     def forward(self, p_tree, h_tree):
         p_tree.postorder_traverse(self.rnn)
         h_tree.postorder_traverse(self.rnn)
@@ -57,11 +71,16 @@ class AttentionFromH2P_vRNN(nn.Module):
 
         result = h_tree.get_attention_representation()
         result = torch.cat((h_tree.calculate_result, p_tree.calculate_result, result), 1)
+        if self.train:
+            result = self.dropout(result)
         result = F.sigmoid(F.elu(self.linear(result)))
 
-        out = F.softmax(self.dropout(result))
+        out = F.softmax(result)
 
         return out
+
+    def set_train_flag(self, flag):
+        self.train = flag
 
 class DoubleAttention_vRNN(nn.Module):
     def __init__(self, word_embedding, config):
@@ -72,6 +91,8 @@ class DoubleAttention_vRNN(nn.Module):
         self.node2tree = Node2TreeAttention(config['hidden_dim'])
         self.dropout = nn.Dropout(p=config['drop_p'])
 
+        self.train = True
+
     def forward(self, p_tree, h_tree):
         p_tree.postorder_traverse(self.rnn)
         h_tree.postorder_traverse(self.rnn)
@@ -85,11 +106,16 @@ class DoubleAttention_vRNN(nn.Module):
         result1 = h_tree.get_attention_representation()
         result2 = p_tree.get_attention_representation()
         result = torch.cat((h_tree.calculate_result, p_tree.calculate_result, result1, result2), 1)
+        if self.train:
+            result = self.dropout(result)
         result = F.sigmoid(F.elu(self.linear(result)))
 
         out = F.softmax(self.dropout(result))
 
         return out
+
+    def set_train_flag(self, flag):
+        self.train = flag
 
 class AttentionFromH2P_LSTM(nn.Module):
     def __init__(self, word_embedding, config):
@@ -100,6 +126,8 @@ class AttentionFromH2P_LSTM(nn.Module):
         self.node2tree = Node2TreeAttention(2 * config['hidden_dim'])
         self.dropout = nn.Dropout(p=config['drop_p'])
 
+        self.train = True
+
     def forward(self, p_tree, h_tree):
         p_tree.postorder_traverse(self.rnn)
         h_tree.postorder_traverse(self.rnn)
@@ -109,11 +137,16 @@ class AttentionFromH2P_LSTM(nn.Module):
 
         result = h_tree.get_attention_representation()
         result = torch.cat((h_tree.calculate_result, p_tree.calculate_result, result), 1)
+        if self.train:
+            result = self.dropout(result)
         result = F.sigmoid(F.elu(self.linear(result)))
 
         out = F.softmax(self.dropout(result))
 
         return out
+
+    def set_train_flag(self, flag):
+        self.train = flag
 
 class DoubleAttention_LSTM(nn.Module):
     def __init__(self, word_embedding, config):
@@ -123,6 +156,8 @@ class DoubleAttention_LSTM(nn.Module):
         self.linear = nn.Linear(config['hidden_dim'] * 8, config['relation_num'])
         self.node2tree = Node2TreeAttention(2 * config['hidden_dim'])
         self.dropout = nn.Dropout(p=config['drop_p'])
+
+        self.train = True
 
     def forward(self, p_tree, h_tree):
         p_tree.postorder_traverse(self.rnn)
@@ -137,8 +172,13 @@ class DoubleAttention_LSTM(nn.Module):
         result1 = h_tree.get_attention_representation()
         result2 = p_tree.get_attention_representation()
         result = torch.cat((h_tree.calculate_result, p_tree.calculate_result, result1, result2), 1)
+        if self.train:
+            result = self.dropout(result)
         result = F.sigmoid(F.elu(self.linear(result)))
 
         out = F.softmax(self.dropout(result))
 
         return out
+
+    def set_train_flag(self, flag):
+        self.train = flag
