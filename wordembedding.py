@@ -14,6 +14,7 @@ class WordEmbedding(object):
     def __init__(self, path):
         self.max_word_width = 1024
         self.OOV_SYM = '<OOV>'
+        self.from_cache = False
 
         self.cache_path = path + '.pickle'
         if not os.path.isfile(self.cache_path):
@@ -23,6 +24,7 @@ class WordEmbedding(object):
             printerr('Loading embedding from cache file...')
             cache = torch.load(self.cache_path)
             self.vocab, self.embeddings = cache[0], cache[1]
+            self.from_cache = True
 
         self.word2idx = None
 
@@ -77,10 +79,13 @@ class WordEmbedding(object):
         trimmed_vocab = []
         trimmed_vocab.append(self.OOV_SYM)
 
+        printerr('handling words in corpus...')
         words = word_counts.keys()
         for w in self.vocab:
             if w in words:
                 trimmed_vocab.append(w)
+
+        printerr('handling phrases in corpus...')
         phrases = phrase_counts.keys()
         for p in self.vocab:
             if p in phrases:

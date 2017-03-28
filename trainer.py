@@ -30,36 +30,88 @@ if args.cuda:
 class Trainer(object):
     def __init__(self, verbose=True):
         self.verbose = verbose
-        if self.verbose:
-            printerr('Word embedding path: ' + args.word_embedding)
-        self.word_embedding = WordEmbedding(args.word_embedding)
+
+        self.profiler = SimpleProfiler()
+
+        def _start_record(profiler, task_name, print_info):
+            profiler.reset(task_name)
+            profiler.start(task_name)
+            printerr(print_info)
+
+        def _end_record(profiler, task_name):
+            profiler.pause(task_name)
+            printerr('\t cost %fs' % profiler.get_time(task_name))
 
         if self.verbose:
-            printerr('Dataset prefix:' + args.dataset_prefix)
+            _start_record(self.profiler, 'load_embed', 'Word embedding path: ' + args.word_embedding)
+        self.word_embedding = WordEmbedding(args.word_embedding)
+        if self.verbose:
+            _end_record(self.profiler, 'load_embed')
+
+        if self.verbose:
+            _start_record(self.profiler, 'load_snli', 'Dataset prefix:' + args.dataset_prefix)
         self.data = SNLI(args.dataset_prefix, args.train_size, True, True)
+        if self.verbose:
+            _end_record(self.profiler, 'load_snli')
 
         # trim the word embeddings to contain only words in the dataset
-        if self.verbose:
-            printerr("Before trim word embedding, " + str(self.word_embedding.embeddings.size(0)) + " words")
-        self.word_embedding.trim_by_counts(self.data.word_counts, self.data.phrase_counts)
-        if self.verbose:
-            printerr("After trim word embedding, " + str(self.word_embedding.embeddings.size(0)) + " words")
-        self.word_embedding.extend_by_counts(self.data.word_counts)
-        if self.verbose:
-            printerr("After adding training words, " + str(self.word_embedding.embeddings.size(0)) + " words")
+        if not self.word_embedding.from_cache:
+            self.profiler.reset('trim_embed')
+            self.profiler.start('trim_embed')
+            if self.verbose:
+                printerr("Before trim word embedding, " + str(self.word_embedding.embeddings.size(0))
+                         + " words")
+            self.word_embedding.trim_by_counts(self.data.word_counts, self.data.phrase_counts)
+            if self.verbose:
+                printerr("After trim word embedding, " + str(self.word_embedding.embeddings.size(0))
+                         + " words")
+            self.word_embedding.extend_by_counts(self.data.word_counts)
+            if self.verbose:
+                printerr("After adding training words, " + str(self.word_embedding.embeddings.size(0))
+                         + " words")
+                self.profiler.pause('trim_embed')
+                printerr('\t cost %fs' % self.profiler.get_time('trim_embed'))
 
-        def _prune_and_mark_id(data_set):
-            for data in data_set:
-                data['p_tree'].prune(self.word_embedding)
-                data['p_tree'].mark_word_id(self.word_embedding)
-                data['h_tree'].prune(self.word_embedding)
-                data['h_tree'].mark_word_id(self.word_embedding)
+        if not self.data.load_from_cache:
+            def _prune_nodes(datasets):
+                for dataset in datasets:
+                    for data in dataset:
+                        data['p_tree'].prune(self.word_embedding)
+                        data['h_tree'].prune(self.word_embedding)
 
-        # mark word ids in snli trees
-        _prune_and_mark_id(self.data.train)
-        _prune_and_mark_id(self.data.dev)
-        _prune_and_mark_id(self.data.test)
+            if self.verbose:
+                _start_record(self.profiler, 'prune_mark', 'Pruning nodes...')
+            # mark word ids in snli trees
+            _prune_nodes([self.data.train, self.data.dev, self.data.test])
+            if self.verbose:
+                _end_record(self.profiler, 'prune_mark')
 
+            def _save_cached_data(data_set, file_name, rev_relations):
+                with open(file_name, 'w') as f:
+                    for data in data_set:
+                        if len(data['p_tree'].get_sentence()) > 1 and len(data['h_tree'].get_sentence()) > 1:
+                            print>>f, rev_relations[data['label']]+'\t'+str(data['p_tree'])+\
+                                  '\t'+str(data['h_tree'])
+            if self.verbose:
+                print printerr('Writing cached snli to' + args.dataset_prefix)
+            _save_cached_data(self.data.train, args.dataset_prefix+'train.text', self.data.rev_relations)
+            _save_cached_data(self.data.dev, args.dataset_prefix+'dev.text', self.data.rev_relations)
+            _save_cached_data(self.data.test, args.dataset_prefix+'test.text', self.data.rev_relations)
+
+        def _mark_ids_(datasets):
+            for dataset in datasets:
+                for data in dataset:
+                    data['p_tree'].mark_word_id(self.word_embedding)
+                    data['h_tree'].mark_word_id(self.word_embedding)
+
+        if self.verbose:
+            _start_record(self.profiler, 'mark_id', 'Marking nodes\' ids...')
+        _mark_ids_([self.data.train, self.data.dev, self.data.test])
+        if self.verbose:
+            _end_record(self.profiler, 'mark_id')
+
+        if self.verbose:
+            printerr('Building model...')
         config = {'hidden_dim': args.hidden_dim, 'relation_num': 3,
                   'cuda_flag': args.cuda, 'drop_p': args.drop_out}
         self.model = AttentionFromH2P_vRNN(self.word_embedding, config)

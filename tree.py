@@ -46,7 +46,12 @@ class Tree(object):
             :param prune_last_period: whether last period should be pruned.
             :param tree_str: tree string in parentheses form.
         """
-        self.build_from_str(tree_str, 0)
+        if not '(' in tree_str:
+            self.val = tree_str
+            self.children = []
+        else:
+            self.build_from_str(tree_str, 0)
+
         if prune_last_period:
             self.prune_last_period()
         self.mark_postorder()
